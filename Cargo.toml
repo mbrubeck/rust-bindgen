@@ -9,8 +9,9 @@ license = "BSD-3-Clause"
 build = "build.rs"
 
 [dependencies]
-log = "0.3.*"
+env_logger = "0.3.2"
 libc = "0.2.*"
+log = "0.3.*"
 syntex_syntax = "0.29.*"
 
 [features]

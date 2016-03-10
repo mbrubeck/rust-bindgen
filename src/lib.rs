@@ -26,17 +26,16 @@ mod clang;
 mod gen;
 mod parser;
 
-#[derive(Clone)]
-pub struct Builder<'a> {
-    options: BindgenOptions,
-    logger: Option<&'a Logger>
+#[derive(Clone, Default)]
+pub struct Builder {
+    options: BindgenOptions
 }
 
-pub fn builder<'a>() -> Builder<'a> {
+pub fn builder() -> Builder {
     Default::default()
 }
 
-impl<'a> Builder<'a> {
+impl Builder {
     pub fn header<T: Into<String>>(&mut self, header: T) -> &mut Self {
         self.clang_arg(header)
     }
@@ -76,22 +75,8 @@ impl<'a> Builder<'a> {
         self
     }
 
-    pub fn log(&mut self, logger: &'a Logger) -> &mut Self {
-        self.logger = Some(logger);
-        self
-    }
-
     pub fn generate(&self) -> Result<Bindings, ()> {
-        Bindings::generate(&self.options, self.logger, None)
-    }
-}
-
-impl<'a> Default for Builder<'a> {
-    fn default() -> Builder<'a> {
-        Builder {
-            logger: None,
-            options: Default::default()
-        }
+        Bindings::generate(&self.options, None)
     }
 }
 
@@ -131,11 +116,6 @@ pub enum LinkType {
     Framework
 }
 
-pub trait Logger {
-    fn error(&self, msg: &str);
-    fn warn(&self, msg: &str);
-}
-
 #[derive(Clone)]
 pub struct Bindings {
     module: ast::Mod
@@ -143,19 +123,13 @@ pub struct Bindings {
 
 impl Bindings {
     /// Deprecated - use a `Builder` instead
-    pub fn generate(options: &BindgenOptions, logger: Option<&Logger>, span: Option<Span>) -> Result<Bindings, ()> {
-        let l = DummyLogger;
-        let logger = match logger {
-            Some(l) => l,
-            None => &l as &Logger
-        };
-
+    pub fn generate(options: &BindgenOptions, span: Option<Span>) -> Result<Bindings, ()> {
         let span = match span {
             Some(s) => s,
             None => DUMMY_SP
         };
 
-        let globals = try!(parse_headers(options, logger));
+        let globals = try!(parse_headers(options));
 
         let module = ast::Mod {
             inner: span,
@@ -195,15 +169,7 @@ impl Bindings {
     }
 }
 
-
-struct DummyLogger;
-
-impl Logger for DummyLogger {
-    fn error(&self, _msg: &str) { }
-    fn warn(&self, _msg: &str) { }
-}
-
-fn parse_headers(options: &BindgenOptions, logger: &Logger) -> Result<Vec<Global>, ()> {
+fn parse_headers(options: &BindgenOptions) -> Result<Vec<Global>, ()> {
     fn str_to_ikind(s: &str) -> Option<types::IKind> {
         match s {
             "uchar"     => Some(types::IUChar),
@@ -230,7 +196,7 @@ fn parse_headers(options: &BindgenOptions, logger: &Logger) -> Result<Vec<Global
         clang_args: options.clang_args.clone(),
     };
 
-    parser::parse(clang_opts, logger)
+    parser::parse(clang_opts)
 }
 
 fn builtin_names() -> HashSet<String> {
@@ -251,14 +217,11 @@ fn builtin_names() -> HashSet<String> {
 #[test]
 fn builder_state()
 {
-    let logger = DummyLogger;
     let mut build = builder();
     {
         build.header("example.h");
         build.link_static("m");
-        build.log(&logger);
     }
-    assert!(build.logger.is_some());
     assert!(build.options.clang_args.binary_search(&"example.h".to_owned()).is_ok());
     assert!(build.options.links.binary_search(&("m".to_owned(), LinkType::Static)).is_ok());
 }

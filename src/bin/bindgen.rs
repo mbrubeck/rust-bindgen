@@ -2,27 +2,18 @@
 #![crate_type = "bin"]
 
 extern crate bindgen;
-#[macro_use] extern crate log;
 
-use bindgen::{Bindings, BindgenOptions, LinkType, Logger};
+#[macro_use]
+extern crate log;
+extern crate env_logger;
+
+use bindgen::{Bindings, BindgenOptions, LinkType};
 use std::io;
 use std::path;
 use std::env;
 use std::default::Default;
 use std::fs;
 use std::process::exit;
-
-struct StdLogger;
-
-impl Logger for StdLogger {
-    fn error(&self, msg: &str) {
-        error!("{}", msg);
-    }
-
-    fn warn(&self, msg: &str) {
-        warn!("{}", msg);
-    }
-}
 
 enum ParseResult {
     CmdUsage,
@@ -158,6 +149,11 @@ Options:
 }
 
 pub fn main() {
+    env_logger::LogBuilder::new()
+        .filter(None, log::LogLevelFilter::Trace)
+        .init()
+        .unwrap();
+
     let mut bind_args: Vec<_> = env::args().collect();
     let bin = bind_args.remove(0);
 
@@ -165,12 +161,11 @@ pub fn main() {
         ParseResult::ParseErr(e) => panic!(e),
         ParseResult::CmdUsage => print_usage(bin),
         ParseResult::ParseOk(options, out) => {
-            let logger = StdLogger;
-            match Bindings::generate(&options, Some(&logger as &Logger), None) {
+            match Bindings::generate(&options, None) {
                 Ok(bindings) => match bindings.write(out) {
                     Ok(()) => (),
                     Err(e) => {
-                        logger.error(&format!("Unable to write bindings to file. {}", e)[..]);
+                        error!("Unable to write bindings to file. {}", e);
                         exit(-1);
                     }
                 },

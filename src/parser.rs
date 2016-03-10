@@ -14,8 +14,6 @@ use clang as cx;
 use clang::{ast_dump, Cursor, Diagnostic, TranslationUnit, type_to_str};
 use clangll::*;
 
-use super::Logger;
-
 pub struct ClangParserOptions {
     pub builtin_names: HashSet<String>,
     pub builtins: bool,
@@ -26,12 +24,11 @@ pub struct ClangParserOptions {
     pub clang_args: Vec<String>,
 }
 
-struct ClangParserCtx<'a> {
+struct ClangParserCtx {
     options: ClangParserOptions,
     name: HashMap<Cursor, Global>,
     globals: Vec<Global>,
     builtin_defs: Vec<Cursor>,
-    logger: &'a (Logger+'a),
     err_count: i32
 }
 
@@ -350,9 +347,8 @@ fn visit_composite(cursor: &Cursor, parent: &Cursor,
                     match ty {
                         il::TInt(_, _) => (),
                         _ => {
-                            let msg = format!("Enums in bitfields are not supported ({}.{}).",
+                            warn!("Enums in bitfields are not supported ({}.{}).",
                                 cursor.spelling(), parent.spelling());
-                            ctx.logger.warn(&msg[..]);
                         }
                     }
                     ("".to_owned(), Some(vec!((cursor.spelling(), width))))
@@ -587,31 +583,30 @@ fn visit_top(cursor: &Cursor,
 fn log_err_warn(ctx: &mut ClangParserCtx, msg: &str, is_err: bool) {
     if is_err {
         ctx.err_count += 1;
-        ctx.logger.error(msg)
+        error!("{}", msg);
     } else {
-        ctx.logger.warn(msg)
+        warn!("{}", msg);
     }
 }
 
-pub fn parse(options: ClangParserOptions, logger: &Logger) -> Result<Vec<Global>, ()> {
+pub fn parse(options: ClangParserOptions) -> Result<Vec<Global>, ()> {
     let mut ctx = ClangParserCtx {
         options: options,
         name: HashMap::new(),
         builtin_defs: vec!(),
         globals: vec!(),
-        logger: logger,
         err_count: 0
     };
 
     let ix = cx::Index::create(false, true);
     if ix.is_null() {
-        ctx.logger.error("Clang failed to create index");
+        error!("Clang failed to create index");
         return Err(())
     }
 
     let unit = TranslationUnit::parse(&ix, "", &ctx.options.clang_args[..], &[], 0);
     if unit.is_null() {
-        ctx.logger.error("No input files given");
+        error!("No input files given");
         return Err(())
     }
 

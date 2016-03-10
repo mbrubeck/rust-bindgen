@@ -1,5 +1,5 @@
 use bindgen;
-use bindgen::{Logger, BindgenOptions};
+use bindgen::BindgenOptions;
 
 use std::default::Default;
 
@@ -11,18 +11,6 @@ use syntax::parse::token;
 use syntax::print::pprust;
 use syntax::ptr::P;
 
-struct TestLogger;
-
-impl Logger for TestLogger {
-    fn error(&self, msg: &str) {
-        println!("err:  {}", msg);
-    }
-
-    fn warn(&self, msg: &str) {
-        println!("warn: {}", msg);
-    }
-}
-
 pub fn generate_bindings(filename: &str) -> Result<Vec<P<ast::Item>>, ()> {
     let mut options:BindgenOptions = Default::default();
     if filename.ends_with("hpp") {
@@ -31,8 +19,7 @@ pub fn generate_bindings(filename: &str) -> Result<Vec<P<ast::Item>>, ()> {
     }
     options.clang_args.push(filename.to_string());
 
-    let logger = TestLogger;
-    Ok(try!(bindgen::Bindings::generate(&options, Some(&logger as &Logger), None)).into_ast())
+    Ok(try!(bindgen::Bindings::generate(&options, None)).into_ast())
 }
 
 pub fn assert_bind_eq(filename: &str, reference_items_str: &str)

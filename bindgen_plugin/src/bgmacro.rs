@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate log;
+
 use std::default::Default;
 use std::env;
 use std::path::Path;
@@ -11,7 +14,7 @@ use syntax::parse::token;
 use syntax::ptr::P;
 use syntax::util::small_vector::SmallVector;
 
-use bindgen::{Bindings, BindgenOptions, LinkType, Logger, self};
+use bindgen::{Bindings, BindgenOptions, LinkType, self};
 
 pub fn bindgen_macro(cx: &mut base::ExtCtxt, sp: codemap::Span, tts: &[ast::TokenTree]) -> Box<base::MacResult+'static> {
     let mut visit = BindgenArgsVisitor {
@@ -51,9 +54,9 @@ pub fn bindgen_macro(cx: &mut base::ExtCtxt, sp: codemap::Span, tts: &[ast::Toke
     let mut short_span = sp;
     short_span.hi = short_span.lo + codemap::BytePos(8);
 
-    let logger = MacroLogger { sp: short_span, cx: cx };
+    MacroLogger { sp: short_span, cx: cx }.init().unwrap();
 
-    let ret = match Bindings::generate(&visit.options, Some(&logger as &Logger), None) {
+    let ret = match Bindings::generate(&visit.options, None) {
         Ok(bindings) => {
             // syntex_syntax is not compatible with libsyntax so convert to string and reparse
             let bindings_str = bindings.to_string();
@@ -314,13 +317,29 @@ struct MacroLogger<'a, 'b:'a> {
     cx: &'a base::ExtCtxt<'b>
 }
 
-impl<'a, 'b> Logger for MacroLogger<'a, 'b> {
-    fn error(&self, msg: &str) {
-        self.cx.span_err(self.sp, msg)
+impl<'a, 'b> log::Log for MacroLogger<'a, 'b> {
+    fn enabled(&self, metadata: &log::LogMetadata) -> bool {
+        metadata.level() <= LogLevel::Warn
     }
 
-    fn warn(&self, msg: &str) {
-        self.cx.span_warn(self.sp, msg)
+    fn log(&self, record: &LogRecord) {
+        if self.enabled(record.metadata()) {
+            println!("{} - {}", record.level(), record.args());
+            match record.level() {
+                log::LogLevel::Warn => self.cx.span_warn(self.sp, msg),
+                log::LogLevel::Error => self.cx.span_err(self.sp, msg),
+                _ => unreachable!()
+            }
+        }
+    }
+}
+
+impl<'a, 'b> MacroLogger {
+    fn init(&self) -> Result<(), log::SetLoggerError> {
+        log::set_logger(|max_log_level| {
+            max_log_level.set(log::LogLevelFilter::Info);
+            Box::new(SimpleLogger)
+        })
     }
 }
 
