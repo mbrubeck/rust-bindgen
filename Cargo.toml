@@ -12,8 +12,10 @@ build = "build.rs"
 
 [dependencies]
 clippy = { version = "*", optional = true }
+docopt = "0.6.*"
 log = "0.3.*"
 libc = "0.2.*"
+rust-serialize = "0.3.*"
 syntex_syntax = "0.29.*"
 
 [features]

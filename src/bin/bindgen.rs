@@ -24,6 +24,41 @@ impl Logger for StdLogger {
     }
 }
 
+const USAGE: &'static str = "
+Generate C bindings for Rust.
+
+Usage:
+  bindgen [options] <file>
+
+Options:
+  -h, --help Display help message.
+  -l <library>, --dynamic-link=<library> Link to a dynamic library, can be provided multiple times.
+  --static-link=<library> Link to a static library.
+  --framework-link=<framework>     Link to a framework (Mac OSX).
+  -o <output>, --output=<output>             Write bindings to <output> (- is stdout). [default: -]
+  --match=<name> Only output bindings for definitions from files
+                               whose name contains <name>
+                               If multiple -match options are provided, files
+                               matching any rule are bound to.
+  --builtins Output bindings for builtin definitions
+                               (for example __builtin_va_list)
+  --allow-unknown-types       Don't fail if we encounter types we do not support,
+                               instead treat them as void
+  --emit-clang-ast            Output the ast (for debugging purposes)
+  --override-enum-type=<type> Override enum type, type name could be
+                                 uchar
+                                 schar
+                                 ushort
+                                 sshort
+                                 uint
+                                 sint
+                                 ulong
+                                 slong
+                                 ulonglong
+                                 slonglong
+  --clang-options=<opts>      Options to clang.
+";
+
 enum ParseResult {
     CmdUsage,
     ParseOk(BindgenOptions, Box<io::Write+'static>),
