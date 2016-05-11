@@ -28,6 +28,9 @@ matrix:
   include:
     - env: LLVM_VERSION=3.7
       rust: stable
+      script: cargo build --features static --verbose
+    - env: LLVM_VERSION=3.7
+      rust: stable
     - env: LLVM_VERSION=3.7
       rust: beta
     - os: osx
